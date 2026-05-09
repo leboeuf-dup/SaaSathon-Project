@@ -9,7 +9,7 @@ The demo can be accessed [here](https://quested-sage.vercel.app/).
 
 ## Screenshots
 
-![Demo Screenshot](./screenshots/demo.png)
+![Demo Screenshot](./screenshots/demo.PNG)
 
 
 ## Tech Stack
