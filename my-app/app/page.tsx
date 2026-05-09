@@ -1,210 +1,91 @@
-const quests = [
-  {
-    title: "Monday",
-    rank: "Main Quest",
-    progress: 58,
-    active: true,
-    tasks: [
-      {
-        title: "Lecture 1",
-        complete: false,
-        subtasks: [
-          { title: "Ask one question", complete: false },
-          { title: "Write three key notes", complete: true },
-        ],
-      },
-      {
-        title: "Lecture 2",
-        complete: false,
-        subtasks: [
-          { title: "Review slides before class", complete: true },
-          { title: "Mark confusing topics", complete: false },
-        ],
-      },
-      {
-        title: "Grocery",
-        complete: true,
-        subtasks: [
-          { title: "Buy fruit", complete: true },
-          { title: "Pick up rice", complete: true },
-        ],
-      },
-      {
-        title: "Homework",
-        complete: false,
-        subtasks: [
-          { title: "Finish question 4", complete: true },
-          { title: "Submit before 8pm", complete: false },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Tuesday",
-    rank: "Side Quest",
-    progress: 20,
-    active: false,
-    tasks: [
-      {
-        title: "Lab Prep",
-        complete: false,
-        subtasks: [{ title: "Pack laptop charger", complete: false }],
-      },
-    ],
-  },
-];
-
-const activeQuest = quests.find((quest) => quest.active) ?? quests[0];
-const completedCount = activeQuest.tasks.filter((task) => task.complete).length;
+import Image from "next/image";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
-      <section className="mx-auto flex min-h-screen w-full max-w-[720px] flex-col px-4 py-5 sm:px-6">
-        <header className="border border-white/20 bg-[#0c0c0c]">
-          <div className="flex items-center justify-between border-b border-white/20 px-4 py-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-white/55">
-                Quest It
-              </p>
-              <h1 className="mt-1 text-2xl font-black tracking-wide">
-                Quest Log
+    <main className="min-h-screen bg-neutral-800 text-white">
+      <section
+        className="relative h-[14vh] min-h-28 bg-neutral-950 px-4 py-3"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.7)), url('/banner1.jpg')",
+          backgroundSize: "100% auto",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="relative z-10 flex h-full items-center justify-between gap-4">
+          <div className="relative flex h-full flex-1 items-center">
+            <h3 className="absolute left-0 top-1 text-[10px] font-bold uppercase tracking-[0.3em] text-white/70">
+              QUEST IT
+            </h3>
+
+            <div className="translate-y-3">
+              <h1 className="text-3xl font-black leading-none tracking-wide">
+                ELVIS
               </h1>
-            </div>
-            <div className="border border-white/25 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              Lv. 03
-            </div>
-          </div>
-
-          <nav className="flex overflow-hidden">
-            {quests.map((quest) => (
-              <button
-                className={`min-h-14 flex-1 border-r border-white/15 px-4 text-left text-sm font-black uppercase tracking-[0.14em] last:border-r-0 ${
-                  quest.active
-                    ? "bg-white text-black"
-                    : "bg-[#0c0c0c] text-white/55"
-                }`}
-                key={quest.title}
-                type="button"
-              >
-                {quest.title}
-              </button>
-            ))}
-          </nav>
-        </header>
-
-        <section className="min-h-[50vh] border-x border-b border-white/20 bg-[#080808]">
-          <div className="border-b border-white/15 px-4 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-white/45">
-                  {activeQuest.rank}
-                </p>
-                <h2 className="mt-1 text-4xl font-black uppercase tracking-wide">
-                  {activeQuest.title}
-                </h2>
-              </div>
-              <p className="pt-2 text-right text-xs font-black uppercase tracking-[0.18em] text-white/55">
-                {completedCount}/{activeQuest.tasks.length} Clear
-              </p>
-            </div>
-
-            <div className="mt-4 h-2 border border-white/25 bg-black">
-              <div
-                className="h-full bg-white"
-                style={{ width: `${activeQuest.progress}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-3 p-3">
-            {activeQuest.tasks.map((task, taskIndex) => (
-              <article
-                className={`border bg-[#101010] ${
-                  task.complete ? "border-white/40" : "border-white/20"
-                }`}
-                key={task.title}
-              >
-                <div className="flex min-h-20 items-center gap-4 px-4 py-3">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center border text-sm font-black ${
-                      task.complete
-                        ? "border-white bg-white text-black"
-                        : "border-white/35 text-white/60"
-                    }`}
-                  >
-                    {task.complete ? "X" : String(taskIndex + 1).padStart(2, "0")}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
-                      Task
-                    </p>
-                    <h3
-                      className={`mt-1 text-2xl font-black uppercase tracking-wide ${
-                        task.complete
-                          ? "text-white/45 line-through decoration-white decoration-2"
-                          : "text-white"
-                      }`}
-                    >
-                      {task.title}
-                    </h3>
-                  </div>
+              <div className="mt-2 flex translate-y-1 items-center gap-2">
+                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
+                  <Image
+                    className="object-cover"
+                    src="/badges/badge1.png"
+                    alt="Warrior badge"
+                    fill
+                    sizes="32px"
+                  />
                 </div>
-
-                <ul className="border-t border-white/10">
-                  {task.subtasks.map((subtask) => (
-                    <li
-                      className="flex min-h-12 items-center gap-3 border-b border-white/10 px-4 py-2 last:border-b-0"
-                      key={subtask.title}
-                    >
-                      <span
-                        className={`h-3 w-3 shrink-0 border ${
-                          subtask.complete
-                            ? "border-white bg-white"
-                            : "border-white/35"
-                        }`}
-                      />
-                      <span
-                        className={`text-sm font-bold uppercase tracking-[0.08em] ${
-                          subtask.complete
-                            ? "text-white/40 line-through decoration-white decoration-2"
-                            : "text-white/75"
-                        }`}
-                      >
-                        {subtask.title}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
+                  <Image
+                    className="object-cover"
+                    src="/badges/badge2.png"
+                    alt="Streak badge"
+                    fill
+                    sizes="32px"
+                  />
+                </div>
+                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
+                  <Image
+                    className="object-cover"
+                    src="/badges/badge3.png"
+                    alt="Focus badge"
+                    fill
+                    sizes="32px"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
 
-        <section className="mt-4 border border-white/20 bg-[#0c0c0c] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-white/45">
-            Add Panel
-          </p>
-          <div className="mt-3 grid gap-3">
-            <input
-              className="h-11 border border-white/20 bg-black px-3 text-sm font-bold uppercase tracking-[0.08em] text-white outline-none placeholder:text-white/25"
-              placeholder="New quest"
-              readOnly
-            />
-            <input
-              className="h-11 border border-white/20 bg-black px-3 text-sm font-bold uppercase tracking-[0.08em] text-white outline-none placeholder:text-white/25"
-              placeholder="New task"
-              readOnly
-            />
-            <input
-              className="h-11 border border-white/20 bg-black px-3 text-sm font-bold uppercase tracking-[0.08em] text-white outline-none placeholder:text-white/25"
-              placeholder="New subtask"
-              readOnly
-            />
+          <div className="self-center border border-white/40 bg-black/40 px-3 py-2 text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
+              Level
+            </p>
+            <p className="text-2xl font-black leading-none">03</p>
           </div>
-        </section>
+        </div>
       </section>
+
+      <div className="p-4">
+        <p className="max-w-md text-neutral-300">
+          This is a basic paragraph. Change this text to edit what appears on the page.
+        </p>
+
+        <section className="mt-8 border border-white/30 bg-neutral-900 p-6">
+          <h2 className="text-2xl font-semibold">Example Box</h2>
+          <p className="mt-2 text-neutral-400">
+            This box is a section element. The border, background, and spacing come from className.
+          </p>
+        </section>
+
+        <button className="mt-6 bg-white px-4 py-2 font-bold text-neutral-900">
+          Example Button
+        </button>
+
+        <ul className="mt-8 list-disc space-y-2 pl-6 text-neutral-200">
+          <li>First list item</li>
+          <li>Second list item</li>
+          <li>Third list item</li>
+        </ul>
+      </div>
     </main>
   );
 }
