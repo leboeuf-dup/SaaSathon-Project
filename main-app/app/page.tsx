@@ -31,7 +31,7 @@ export default function Home() {
         className="relative h-[14vh] min-h-28 bg-neutral-950 px-4 py-3"
         style={{
           backgroundImage:
-            "linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.7)), url('/banner1.jpg')",
+            "linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.7)), url('/banner2.png')",
           backgroundSize: "100% auto",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
