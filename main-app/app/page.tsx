@@ -1,6 +1,8 @@
 "use client";
+
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 const userName = "ELVIS ZHANG";
 
@@ -29,6 +31,22 @@ function getUserNameSize(name: string) {
 export default function Home() {
 
   const [activeQuest, setActiveQuest] = useState("MONDAY");
+  const [quests, setQuests] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function testConnection() {
+      const { data, error } = await supabase
+        .from("quests")
+        .select("*");
+
+      console.log("DATA:", data);
+      console.log("ERROR:", error);
+
+      setQuests(data || []);
+    }
+
+    testConnection();
+  }, []);
 
   return (
 
@@ -153,7 +171,21 @@ export default function Home() {
         )}
       </div>
 
+      <div className="p-4">
+        <h2 className="text-2xl font-bold mb-4">
+          Quests
+        </h2>
 
+        {quests.map((quest) => (
+          <div
+            key={quest.id}
+            className="mb-3 border border-white/20 bg-neutral-900 p-4"
+          >
+            <p className="font-bold">{quest.title}</p>
+            <p>{quest.xp} XP</p>
+          </div>
+        ))}
+      </div>
 
       <div className="p-4">
         <p className="max-w-md text-neutral-300">
