@@ -2,6 +2,15 @@
 
 import { useMemo, useState } from "react";
 
+import "react";
+
+declare module "react" {
+  interface StyleHTMLAttributes<T> extends React.HTMLAttributes<T> {
+    jsx?: boolean;
+    global?: boolean;
+  }
+}
+
 type Day =
   | "Monday"
   | "Tuesday"
@@ -101,6 +110,7 @@ function playDiamondSound() {
 }
 
 export default function Home() {
+  // MAIN QUEST STATE
   const [questsByDay, setQuestsByDay] = useState<Record<Day, Quest[]>>({
     Monday: [
       {
@@ -125,7 +135,7 @@ export default function Home() {
       },
       {
         id: generateId(),
-        title: "Make hackathon SaaS project",
+        title: "Work on hackathon SaaS",
         completed: false,
         diamonds: 5,
       },
@@ -137,9 +147,14 @@ export default function Home() {
     Sunday: [],
   });
 
+  // UI STATE
   const [selectedDay, setSelectedDay] = useState<Day>("Monday");
   const [newQuestTitle, setNewQuestTitle] = useState("");
   const [diamondPopup, setDiamondPopup] = useState("");
+
+  // AI STATE
+  const [goalInput, setGoalInput] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
 
   const totalDiamonds = useMemo(() => {
     let total = 0;
@@ -251,6 +266,71 @@ export default function Home() {
     }));
   }
 
+  // AI GENERATE FUNCTION
+  async function generateAIPlan() {
+    if (!goalInput.trim()) {
+      alert("Type a goal first.");
+      return;
+    }
+
+    setLoadingAI(true);
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        goal: goalInput,
+        existingPlan: questsByDay,
+      }),
+      });
+
+      const data = await res.json();
+
+     if (!data.plan) {
+      console.log("AI error response:", data);
+      alert("AI failed: " + (data.error || "unknown error"));
+      setLoadingAI(false);
+      return;
+    }
+
+      const newQuests: Record<Day, Quest[]> = {
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+        Sunday: [],
+      };
+
+      for (const day of DAYS) {
+        const quests: string[] = data.plan[day] || [];
+
+        newQuests[day] = quests.map((q) => ({
+          id: generateId(),
+          title: q,
+          completed: false,
+          diamonds: 5,
+        }));
+      }
+
+      setQuestsByDay((prev) => {
+      const merged: Record<Day, Quest[]> = { ...prev };
+
+      for (const day of DAYS) {
+      merged[day] = [...prev[day], ...newQuests[day]];
+    }
+
+    return merged;
+  });
+    } catch (err) {
+      alert("Something went wrong calling AI.");
+    }
+
+    setLoadingAI(false);
+  }
+
   return (
     <div className="min-h-screen text-slate-900 bg-gradient-to-br from-sky-200 via-cyan-200 to-yellow-100">
       <div className="max-w-6xl mx-auto px-6 py-10">
@@ -332,11 +412,10 @@ export default function Home() {
           <div className="lg:col-span-2 bg-white/50 border border-white/70 rounded-3xl p-6 shadow-xl">
             <h2 className="text-xl font-black mb-2">🌴 Weekly Journey</h2>
             <p className="text-slate-700 text-sm font-semibold mb-8">
-              Islands are days. Quest nodes fill up as you complete them.
+              Islands are days. Complete quests to fill the path.
             </p>
 
             <div className="relative">
-              {/* Vertical connector line */}
               <div className="absolute left-7 top-6 bottom-6 w-2 rounded-full bg-cyan-200/60" />
 
               <div className="space-y-10">
@@ -345,7 +424,6 @@ export default function Home() {
                   const total = totalCount(day);
                   const ratio = total === 0 ? 0 : completed / total;
 
-                  // color intensity based on completion ratio
                   const progressClass =
                     ratio === 0
                       ? "bg-cyan-200"
@@ -363,7 +441,6 @@ export default function Home() {
 
                   return (
                     <div key={day} className="relative pl-16">
-                      {/* Day node */}
                       <button
                         onClick={() => setSelectedDay(day)}
                         className="absolute left-2 top-0"
@@ -380,7 +457,6 @@ export default function Home() {
                         </div>
                       </button>
 
-                      {/* Day Header */}
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-lg font-black text-slate-900">
@@ -398,7 +474,6 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Quest nodes */}
                       <div className="mt-4 flex flex-wrap gap-3">
                         {questsByDay[day].length === 0 ? (
                           <div className="text-slate-600 font-semibold text-sm">
@@ -439,14 +514,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* SIDE PANEL (NO DUPLICATION) */}
+          {/* SIDE PANEL */}
           <div className="bg-white/50 border border-white/70 rounded-3xl p-6 shadow-xl">
-            <h2 className="text-xl font-black">📜 Quest Controls</h2>
+            <h2 className="text-xl font-black">⚙️ Controls</h2>
             <p className="text-slate-700 text-sm font-semibold mt-2">
-              Add quests to the selected day.
+              Add quests or generate a full week with AI.
             </p>
 
-            {/* Add quest */}
+            {/* ADD QUEST */}
             <div className="mt-6">
               <p className="text-slate-700 font-black text-sm">
                 Add Quest ({selectedDay})
@@ -472,16 +547,42 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Delete selected day quests */}
+            {/* AI GENERATOR */}
+            <div className="mt-8">
+              <p className="text-slate-700 font-black text-sm">
+                AI Weekly Quest Generator
+              </p>
+
+              <textarea
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                placeholder="Example: I have a test Thursday, gym 4x, and need to finish hackathon demo by Sunday."
+                className="mt-2 w-full h-28 bg-white/80 border border-white/80 rounded-xl px-4 py-3 outline-none focus:border-blue-600/60 font-semibold"
+              />
+
+              <button
+                onClick={generateAIPlan}
+                disabled={loadingAI}
+                className="mt-3 w-full bg-blue-700 hover:bg-blue-600 disabled:bg-slate-400 transition font-black text-white rounded-xl px-4 py-3"
+              >
+                {loadingAI ? "Generating..." : "✨ Generate Weekly Plan"}
+              </button>
+
+              <p className="text-xs text-slate-500 font-semibold mt-2">
+                AI will add new quests around your current plan.
+              </p>
+            </div>
+
+            {/* MANAGE SELECTED DAY */}
             <div className="mt-8">
               <p className="text-slate-700 font-black text-sm">
                 Manage {selectedDay}
               </p>
 
-              <div className="mt-3 space-y-2 max-h-[360px] overflow-auto pr-1">
+              <div className="mt-3 space-y-2 max-h-[260px] overflow-auto pr-1">
                 {questsByDay[selectedDay].length === 0 ? (
                   <div className="text-slate-600 font-semibold text-sm">
-                    Nothing to manage.
+                    Nothing to delete.
                   </div>
                 ) : (
                   questsByDay[selectedDay].map((quest) => (
@@ -502,27 +603,6 @@ export default function Home() {
                     </div>
                   ))
                 )}
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="mt-8 space-y-3">
-              <div className="bg-white/60 border border-white/70 rounded-2xl p-4">
-                <p className="text-slate-600 text-sm font-semibold">
-                  Weekly Progress
-                </p>
-                <p className="text-2xl font-black mt-1 text-slate-900">
-                  {totalCompleted}/{totalQuests}
-                </p>
-              </div>
-
-              <div className="bg-white/60 border border-white/70 rounded-2xl p-4">
-                <p className="text-slate-600 text-sm font-semibold">
-                  Next Level In
-                </p>
-                <p className="text-2xl font-black mt-1 text-slate-900">
-                  💎 {levelData.diamondsToNext - levelData.diamondsIntoLevel}
-                </p>
               </div>
             </div>
           </div>
