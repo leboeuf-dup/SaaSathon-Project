@@ -14,6 +14,116 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+    const createdAt = new Date().toISOString();
+
+    const prompt = `
+You are an AI quest planner for a gamified productivity SaaS.
+
+Current date/time:
+${currentDateTime}
+
+User goal:
+${goal}
+
+Create a weekly quest plan spread across Monday to Sunday.
+
+Rules:
+- MAIN QUESTS are high-priority goals.
+- SIDE QUESTS are low-priority goals.
+- Main quests must be broken into 3 or more tasks.
+- Side quests must be broken into 2 or fewer tasks.
+- Every task must have a day from Monday to Sunday.
+- Spread tasks realistically across the week.
+- High priority tasks should appear before low priority tasks.
+- High priority tasks use codes: 1.0, 1.1, 1.2, 1.3...
+- Low priority tasks use codes: 2.0, 2.1, 2.2...
+- High priority tasks give 50 XP each task.
+- Low priority tasks give 30 XP task.
+- MAIN QUESTS give 200 XP when all their tasks are completed.
+- LOW QUESTS give 100 XP when all their taska are completed.
+- Each task object must include its own "xp" value.
+- Each quest object must include its own "completionXp" value.
+- Level increases every 3000 XP.
+- Badge is awarded every 10 levels.
+- completed must always be false.
+- createdAt must use this timestamp: ${createdAt}
+Due date rules:
+- Do NOT invent due dates.
+- Only include a dueDate if the user explicitly provides one.
+- If the user says "due Friday", "by Sunday", "deadline 15 May", or similar, convert it to ISO format using currentDateTime.
+- If the user does not provide a due date, set dueDate to null.
+- Main quests and side quests must each have a dueDate field.
+
+
+Return ONLY valid JSON.
+No markdown.
+No explanation.
+
+JSON format:
+{
+  "weeklyOverview": {
+    "Monday": [],
+    "Tuesday": [],
+    "Wednesday": [],
+    "Thursday": [],
+    "Friday": [],
+    "Saturday": [],
+    "Sunday": []
+  },
+  "mainQuests": [
+    {
+      "title": "Main quest title",
+      "type": "main",
+      "dueDate": null,
+      "completionXp": 200,
+      "tasks": [
+        {
+          "code": "1.0",
+          "day": "Monday",
+          "text": "Task text",
+          "priority": "high",
+          "xp": 50,
+          "completed": false,
+          "createdAt": "${createdAt}",
+          "questTitle": "Main quest title",
+          "questType": "main"
+        }
+      ]
+    }
+  ],
+  "sideQuests": [
+    {
+      "title": "Side quest title",
+      "type": "side",
+      "dueDate": null,
+      "completionXp": 100,
+      "tasks": [
+        {
+          "code": "2.0",
+          "day": "Wednesday",
+          "text": "Task text",
+          "priority": "low",
+          "xp": 30,
+          "completed": false,
+          "createdAt": "${createdAt}",
+          "questTitle": "Side quest title",
+          "questType": "side"
+        }
+      ]
+    }
+  ],
+  "levelRules": {
+    "xpPerLevel": 30,
+    "badgeEveryLevels": 10
+  }
+}
+
+Important:
+- weeklyOverview must include ALL tasks grouped by day.
+- weeklyOverview tasks must include: code, day, text, priority, xp, completed, createdAt, questTitle, questType.
+- mainQuests should only contain main/high-priority quests.
+- sideQuests should only contain side/low-priority quests.
+`;
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -28,27 +138,7 @@ export async function POST(req: Request) {
         messages: [
           {
             role: "user",
-            content: `
-Turn the user's goal into 5 short productivity quests.
-
-Current date/time:
-${currentDateTime}
-
-Goal:
-${goal}
-
-Rules:
-- Return only valid JSON.
-- No markdown.
-- No explanation.
-- Each quest should be short and actionable.
-- Make the quests practical for getting work done.
-
-Format:
-{
-  "quests": ["quest 1", "quest 2", "quest 3", "quest 4", "quest 5"]
-}
-`,
+            content: prompt,
           },
         ],
         temperature: 0.4,
