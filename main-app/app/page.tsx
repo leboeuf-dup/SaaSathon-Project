@@ -276,32 +276,31 @@ const handleToggleQuest = async (quest: Quest) => {
 
   //Handles login
   const handleStartDemo = async () => {
-  if (!loginName.trim()) return;
-  const { data, error } = await supabase.from("users").insert([{ username: loginName }]).select().single();
-  if (error) { console.error(error); return; }
-  
-  localStorage.setItem("quest_user_id", data.id);
-  setUser(data);
-  setShowLogin(false);
-  setLoginName("");
+      if (!loginName.trim()) return;
+      const { data, error } = await supabase.from("users").insert([{ username: loginName }]).select().single();
+      if (error) { console.error(error); return; }
 
-  // Create dummy quests for new user
-  const { data: questData } = await supabase.from("quests").insert([
-    { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200, user_id: data.id },
-    { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200, user_id: data.id },
-    { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100, user_id: data.id },
-  ]).select();
+      const { data: questData } = await supabase.from("quests").insert([
+        { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200, user_id: data.id },
+        { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200, user_id: data.id },
+        { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100, user_id: data.id },
+      ]).select();
 
-  if (questData) {
-    await supabase.from("tasks").insert([
-      { quest_id: questData[0].id, title: "Research requirements", xp: 50, is_done: false },
-      { quest_id: questData[0].id, title: "Complete calculations", xp: 80, is_done: false },
-      { quest_id: questData[1].id, title: "Check vehicle oil and tires", xp: 50, is_done: false },
-      { quest_id: questData[1].id, title: "Pack hiking gear", xp: 90, is_done: false },
-      { quest_id: questData[2].id, title: "Watch RC vehicle videos", xp: 60, is_done: false },
-    ]);
-  }
-};
+      if (questData) {
+        await supabase.from("tasks").insert([
+          { quest_id: questData[0].id, title: "Research requirements", xp: 50, is_done: false },
+          { quest_id: questData[0].id, title: "Complete calculations", xp: 80, is_done: false },
+          { quest_id: questData[1].id, title: "Check vehicle oil and tires", xp: 50, is_done: false },
+          { quest_id: questData[1].id, title: "Pack hiking gear", xp: 90, is_done: false },
+          { quest_id: questData[2].id, title: "Watch RC vehicle videos", xp: 60, is_done: false },
+        ]);
+      }
+
+      localStorage.setItem("quest_user_id", data.id);
+      setShowLogin(false);
+      setLoginName("");
+      setUser(data); // ← triggers useEffect → fetchQuests + fetchTasks
+    };
 
 
 
@@ -320,6 +319,9 @@ const handleToggleQuest = async (quest: Quest) => {
       if (user) {
         fetchQuests();
         fetchTasks();
+      } else {
+        setQuests([]);
+        setTasks([]);
       }
     }, [user]);
 
