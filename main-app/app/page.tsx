@@ -19,8 +19,8 @@ const getOrdinal = (n: number) => {
 
 const badges = [
   { src: "/badges/badge1.png", alt: "Warrior badge" },
-  { src: "/badges/badge1.png", alt: "Streak badge" },
-  { src: "/badges/badge1.png", alt: "Focus badge" },
+  { src: "/badges/badge9.png", alt: "Streak badge" },
+  { src: "/badges/badge15.png", alt: "Focus badge" },
 ];
 
 function getUserNameSize(name: string) {
@@ -171,6 +171,22 @@ export default function Home() {
   setQuests(data ?? []);
 };
 
+const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+useEffect(() => {
+  const handleResize = () => {
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      const offset = window.innerHeight - visualViewport.height;
+      setKeyboardOffset(offset);
+    }
+  };
+
+  window.visualViewport?.addEventListener("resize", handleResize);
+  return () => window.visualViewport?.removeEventListener("resize", handleResize);
+}, []);
+
+
 const fetchTasks = async () => {
   if (!user) return;
   const { data: questIds } = await supabase
@@ -228,9 +244,9 @@ const handleAddCoins = () => {
 
   // Insert 3 dummy quests
   const { data: questData } = await supabase.from("quests").insert([
-  { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200, user_id: user?.id },
-  { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200, user_id: user?.id },
-  { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100, user_id: user?.id },
+  { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 600, user_id: user?.id },
+  { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 600, user_id: user?.id },
+  { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 400, user_id: user?.id },
   ]).select();
 
   // Insert dummy tasks linked to those quests
@@ -244,6 +260,9 @@ const handleAddCoins = () => {
     ]);
   }
 
+  await supabase.from("users").update({ total_xp: 0 }).eq("id", user?.id);
+  setCoins(0);
+
   // Log out
   localStorage.removeItem("quest_user_id");
   setUser(null);
@@ -254,6 +273,11 @@ const handleAddCoins = () => {
   //setTasks([]);
 };
 
+const handleLogout = () => {
+  localStorage.removeItem("quest_user_id");
+  setCoins(0);
+  setUser(null);
+};
 
 
 const handleToggleQuest = async (quest: Quest) => {
@@ -440,7 +464,7 @@ const handleAddTask = async (questId: number) => {
               className="text-lg bg-zinc-600 text-white rounded px-2 py-0.5 flex-1 focus:outline-none focus:ring-1 focus:ring-rose-500"
             />
           ) : (
-            <span className="text-lg">{task.title}</span>
+            <span className="text-lg break-words min-w-0">{task.title}</span>
           )}
 
           <div className="flex items-center gap-0">
@@ -525,9 +549,11 @@ const handleAddTask = async (questId: number) => {
           </h1>
 
           <div className="col-start-1 row-start-3 flex items-end gap-3">
-            {badges.map((badge) => (
+            {badges.map((badge, index) => (
               <div
-                className="relative h-10 w-10 overflow-hidden rounded-full"
+                className={`relative h-10 w-10 overflow-hidden rounded-full transition-opacity duration-300 ${
+                  (level ?? 1) >= index + 1 ? "opacity-100" : "opacity-20"
+                }`}
                 key={badge.alt}
               >
                 <Image
@@ -641,7 +667,7 @@ const handleAddTask = async (questId: number) => {
                 </p>
                 <div className="flex items-center justify-between">
                   <h2
-                    className={`text-xl font-bold pt-1 ${
+                    className={`break-words min-w-0 text-xl font-bold pt-1 ${
                       isQuestCompleted(quest.id) ? "line-through text-zinc-400" : ""
                     }`}
                   >
@@ -684,7 +710,7 @@ const handleAddTask = async (questId: number) => {
                 )}
               </p>
               <div className="flex items-center justify-between">
-                <h2 className={`text-xl font-bold pt-1 ${
+                <h2 className={`break-words min-w-0 text-xl font-bold pt-1 ${
                   isQuestCompleted(quest.id) ? "line-through text-zinc-400" : ""
                 }`}>
                   {quest.title}
@@ -729,7 +755,7 @@ const handleAddTask = async (questId: number) => {
                 )}
               </p>
               <div className="flex items-center justify-between">
-                <h2 className={`text-xl font-bold pt-1 ${
+                <h2 className={`break-words min-w-0 text-xl font-bold pt-1 ${
                   isQuestCompleted(quest.id) ? "line-through text-zinc-400" : ""
                 }`}>
                   {quest.title}
@@ -796,7 +822,7 @@ const handleAddTask = async (questId: number) => {
 
       {/* ADD QUEST MODAL */}
     {(showAddQuest || questClosing) && (
-      <div className={`fixed inset-0 bg-black/50 flex flex-col p-6 z-50 py-43 ${
+      <div className={`fixed inset-0 bg-black/50 flex flex-col p-6 z-50 py-35 ${
         questClosing ? "menu-exit" : "menu-enter"
       }`}>
 
@@ -879,27 +905,37 @@ const handleAddTask = async (questId: number) => {
       </button>
 
       
-      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 flex gap-2 ${
+      <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center ${
           menuClosing ? "menu-exit" : "menu-enter"
         }`}>
-          <button
-            onClick={handleReset}
-            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-rose-400 transition-colors whitespace-nowrap"
-          >
-            RESET ACCOUNT
-          </button>
-          <button
-            onClick={handleAddXp}
-            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
-          >
-            + XP
-          </button>
-          <button
-            onClick={handleAddCoins}
-            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
-          >
-            + COINS
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleReset}
+              className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-rose-400 transition-colors whitespace-nowrap"
+            >
+              RESET ACCOUNT
+            </button>
+            <button
+              onClick={handleLogout}
+              className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-rose-400 transition-colors whitespace-nowrap"
+            >
+              LOG OUT
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddXp}
+              className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
+            >
+              + XP
+            </button>
+            <button
+              onClick={handleAddCoins}
+              className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
+            >
+              + COINS
+            </button>
+          </div>
         </div>
 
 
@@ -910,8 +946,10 @@ const handleAddTask = async (questId: number) => {
 
 
       {(showMenu || menuClosing) && (
-        <div className={`fixed top-47 left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}>
-
+        <div
+          className={`fixed left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}
+          style={{ top: `calc(11.75rem - ${keyboardOffset}px)` }}
+>
             <div className="flex gap-2 p-1 pb-0 font-bold justify-center">AI ASSISTANT</div>
 
             {/* Text input */}
@@ -949,7 +987,7 @@ const handleAddTask = async (questId: number) => {
                 onClick={handleStartDemo}
                 className="w-full bg-rose-900 text-white px-4 py-3 font-bold rounded hover:bg-rose-700 transition-colors"
               >
-                START DEMO
+                LOG IN
               </button>
             </div>
           </div>
