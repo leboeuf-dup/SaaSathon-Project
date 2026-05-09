@@ -45,21 +45,25 @@ export default function Home() {
   const [tasks, setTasks] = useState<any[]>([]);
 
   const fetchQuests = async () => {
-    const { data } = await supabase.from("quests").select("*");
+    const { data, error } = await supabase
+      .from("quests")
+      .select("*");
 
-      if (error) {
-    console.error("Quest fetch error:", error);
-    return;
-  }
+    if (error) {
+      console.error("Quest fetch error:", error);
+      return;
+    }
 
     setQuests(data ?? []);
   };
 
   const fetchTasks = async () => {
-    const { data } = await supabase.from("tasks").select("*");
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*");
 
     if (error) {
-      console.error("Quest fetch error:", error);
+      console.error("Task fetch error:", error);
       return;
     }
 
