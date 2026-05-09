@@ -1,4 +1,6 @@
+"use client";
 import Image from "next/image";
+import { useState } from "react";
 
 const userName = "ELVIS ZHANG";
 
@@ -25,7 +27,11 @@ function getUserNameSize(name: string) {
 }
 
 export default function Home() {
+
+  const [activeQuest, setActiveQuest] = useState("MONDAY");
+
   return (
+
     <main className="min-h-screen bg-neutral-800 text-white">
       <section
         className="relative h-[14vh] min-h-28 bg-neutral-950 px-4 py-3"
@@ -83,6 +89,71 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      
+      <div className="p-2">
+          
+      <div className="flex gap-2">
+
+        <button
+        onClick={() => setActiveQuest("MONDAY")}
+        className={`flex-1 px-4 py-2 font-bold ${
+          activeQuest === "MONDAY"
+            ? "bg-neutral-100"
+            : "bg-white-700"
+        }`}
+          >
+          QUEST 1
+        </button>
+
+        <button
+        onClick={() => setActiveQuest("TUESDAY")}
+        className={`flex-1 px-4 py-2 font-bold ${
+          activeQuest === "TUESDAY"
+            ? "bg-neutral-100"
+            : "bg-white-700"
+        }`}
+          >
+          QUEST 1
+        </button>
+
+        <button
+        onClick={() => setActiveQuest("MONDAY")}
+        className={`flex-1 px-4 py-2 font-bold ${
+          activeQuest === "MONDAY"
+            ? "bg-neutral-100"
+            : "bg-white-700"
+        }`}
+          >
+          QUEST 1
+        </button>
+
+      </div>
+
+
+      {activeQuest === "MONDAY" && (
+      <section className="border border-white/30 bg-neutral-900 p-6">
+        <h2 className="text-2xl font-semibold">MONDAY</h2>
+
+        <p className="mt-2 text-neutral-400">
+          Monday tasks here
+        </p>
+      </section>
+      )}
+
+
+      {activeQuest === "TUESDAY" && (
+        <section className="border border-white/30 bg-neutral-900 p-6">
+          <h2 className="text-2xl font-semibold">TUESDAY</h2>
+
+          <p className="mt-2 text-neutral-400">
+            Tuesday tasks here
+          </p>
+        </section>
+        )}
+      </div>
+
+
 
       <div className="p-4">
         <p className="max-w-md text-neutral-300">
