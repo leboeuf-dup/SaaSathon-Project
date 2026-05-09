@@ -947,8 +947,7 @@ const handleAddTask = async (questId: number) => {
 
       {(showMenu || menuClosing) && (
         <div
-          className={`fixed left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}
-          style={{ top: `calc(11.75rem - ${keyboardOffset}px)` }}
+  className={`fixed top-47 left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}
 >
             <div className="flex gap-2 p-1 pb-0 font-bold justify-center">AI ASSISTANT</div>
 
