@@ -10,7 +10,8 @@ const getOrdinal = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-const userName: string = "ELVIS ZHANG";
+// REMOVED: top-level savedUsername const (was SSR-unsafe and non-reactive)
+
 const level: number = 3;
 const coins: number = 50;
 
@@ -46,6 +47,13 @@ type Task = {
 };
 
 export default function Home() {
+
+  const [usernameInput, setUsernameInput] = useState("");
+  // FIX 1: username is now reactive state instead of a top-level const
+  const [username, setUsername] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
   const [activeQuest, setActiveQuest] = useState("1");
   const [showAddQuest, setShowAddQuest] = useState(false);
   const [newQuestTitle, setNewQuestTitle] = useState("");
@@ -53,21 +61,93 @@ export default function Home() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  const fetchQuests = async () => {
-    const { data, error } = await supabase.from("quests").select("*");
-    if (error) { console.error("Quest fetch error:", error); return; }
-    setQuests(data ?? []);
+  const fetchData = async (uid: string) => {
+    const { data: questsData, error: questError } = await supabase
+      .from("quests")
+      .select("*")
+      .eq("user_id", uid);
+
+    if (questError) console.error(questError);
+    setQuests(questsData ?? []);
+
+    // FIX 2: guard tasks query when no quests exist
+    if (!questsData || questsData.length === 0) {
+      setTasks([]);
+      return;
+    }
+
+    const { data: tasksData, error: taskError } = await supabase
+      .from("tasks")
+      .select("*")
+      .in(
+        "quest_id",
+        questsData.map((q) => q.id)
+      );
+
+    if (taskError) console.error(taskError);
+    setTasks(tasksData ?? []);
   };
 
-  const fetchTasks = async () => {
-    const { data, error } = await supabase.from("tasks").select("*");
-    if (error) { console.error("Task fetch error:", error); return; }
-    setTasks(data ?? []);
+  const handleUserLogin = async () => {
+    if (!usernameInput.trim()) return;
+
+    let { data: existingUser } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", usernameInput)
+      .single();
+
+    let uid: string;
+
+    if (!existingUser) {
+      const { data: newUser, error } = await supabase
+        .from("users")
+        .insert([{ username: usernameInput }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      uid = newUser.id;
+    } else {
+      uid = existingUser.id;
+    }
+
+    setUserId(uid);
+    // FIX 1: set reactive username state on login
+    setUsername(usernameInput);
+    // Clear input after login
+    setUsernameInput("");
+
+    localStorage.setItem("user_id", uid);
+    localStorage.setItem("username", usernameInput);
+
+    await fetchData(uid);
   };
 
   useEffect(() => {
-    fetchQuests();
-    fetchTasks();
+    const initUser = async () => {
+      setLoadingUser(true);
+
+      const savedUser = localStorage.getItem("user_id");
+      const savedName = localStorage.getItem("username");
+
+      if (savedUser && savedName) {
+        setUserId(savedUser);
+        // FIX 1: set reactive username state on restore
+        setUsername(savedName);
+        await fetchData(savedUser);
+        setLoadingUser(false);
+        return;
+      }
+
+      setLoadingUser(false);
+    };
+
+    initUser();
   }, []);
 
   const getTasksForQuest = (questId: number) =>
@@ -78,7 +158,6 @@ export default function Home() {
     return questTasks.length > 0 && questTasks.every((t) => t.is_done);
   };
 
-  // Sort quests by priority_rank
   const sortedQuests = [...quests].sort((a, b) => a.priority_rank - b.priority_rank);
   const mainQuests = sortedQuests.filter((q) => q.priority_group === 1);
   const sideQuests = sortedQuests.filter((q) => q.priority_group === 2);
@@ -88,33 +167,50 @@ export default function Home() {
       .from("tasks")
       .update({ is_done: !task.is_done })
       .eq("id", task.id);
-    fetchTasks();
+
+    if (userId) await fetchData(userId);
   };
 
   const handleAddTask = async (questId: number) => {
     await supabase.from("tasks").insert([
       { quest_id: questId, title: "New Task", xp: 10 },
     ]);
-    fetchTasks();
+
+    if (userId) await fetchData(userId);
   };
 
   const handleAddQuest = async () => {
-    if (!newQuestTitle.trim()) return;
+    if (!newQuestTitle.trim() || !userId) return;
+
     const { error } = await supabase.from("quests").insert([
       {
         title: newQuestTitle,
         priority_group: activeQuest === "2" ? 1 : 2,
         priority_rank: 1,
         total_xp: 50,
+        user_id: userId,
       },
     ]);
-    if (error) { console.log("SUPABASE ERROR:", JSON.stringify(error, null, 2)); return; }
-    await fetchQuests();
+
+    if (error) {
+      console.log("SUPABASE ERROR:", JSON.stringify(error, null, 2));
+      return;
+    }
+
+    await fetchData(userId);
     setNewQuestTitle("");
     setShowAddQuest(false);
   };
 
-  // Reusable task list renderer
+  const handleLogout = () => {
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("username");
+    setUserId(null);
+    setUsername("");
+    setQuests([]);
+    setTasks([]);
+  };
+
   const renderTasks = (quest: Quest) => (
     <div className="mt-2 pl-2 space-y-1 border-l border-zinc-600">
       {getTasksForQuest(quest.id).map((task) => (
@@ -145,6 +241,36 @@ export default function Home() {
     </div>
   );
 
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50">
+        <h1 className="text-white text-2xl mb-4">UserName:</h1>
+
+        <input
+          value={usernameInput}
+          onChange={(e) => setUsernameInput(e.target.value)}
+          className="p-3 bg-zinc-800 text-white border border-white/20 rounded w-64"
+          placeholder="Enter username..."
+        />
+
+        <button
+          onClick={handleUserLogin}
+          className="mt-4 px-6 py-2 bg-rose-700 text-white rounded"
+        >
+          Continue
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-neutral-900 text-white z-10">
 
@@ -164,10 +290,11 @@ export default function Home() {
             QUEST IT
           </p>
 
+          {/* FIX 1: use reactive username state instead of savedUsername */}
           <h1
-            className={`${getUserNameSize(userName)} col-start-1 row-start-2 min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}
+            className={`${getUserNameSize(username)} col-start-1 row-start-2 min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}
           >
-            {userName}
+            {username}
           </h1>
 
           <div className="col-start-1 row-start-3 flex items-end gap-3">
@@ -196,6 +323,12 @@ export default function Home() {
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">Coins</p>
               <p className="text-2xl font-black leading-none">{coins}</p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="text-[9px] font-bold uppercase tracking-widest text-white/40 hover:text-white/80 transition-colors text-right"
+            >
+              Log out
+            </button>
           </div>
         </div>
       </section>
