@@ -32,6 +32,7 @@ function getUserNameSize(name: string) {
 
 type Quest = {
   id: number;
+  user_id: number;
   title: string;
   priority_group: number;
   priority_rank: number;
@@ -49,6 +50,66 @@ type Task = {
 };
 
 export default function Home() {
+
+
+
+  //AI
+
+    const [aiNote, setAiNote] = useState("");
+    const [aiLoading, setAiLoading] = useState(false);
+
+    const handleAiGenerate = async () => {
+      if (!aiNote.trim()) return;
+      setAiLoading(true);
+
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: aiNote }),
+      });
+
+      const data = await res.json();
+
+      if (data.quests) {
+        for (const quest of data.quests) {
+          const { data: questData } = await supabase.from("quests").insert([{
+            title: quest.title,
+            priority_group: quest.priority_group,
+            priority_rank: quest.priority_rank,
+            due_date: quest.due_date,
+            total_xp: quest.total_xp,
+            user_id: user?.id,  // ADD THIS
+          }]).select().single();
+
+          if (questData && quest.tasks?.length > 0) {
+            await supabase.from("tasks").insert(
+              quest.tasks.map((t: { title: string; xp: number }) => ({
+                quest_id: questData.id,
+                title: t.title,
+                xp: t.xp,
+                is_done: false,
+                user_id: user?.id,  // ADD THIS
+              }))
+            );
+          }
+        }
+        await fetchQuests();
+        await fetchTasks();
+
+      }
+
+      if (data.message) {
+        alert(data.message); // or show it in the UI somewhere
+      }
+      
+
+      setAiNote("");
+      setAiLoading(false);
+      closeMenu();
+    };
+
+
+
   //Menu
   //Coins
   const [coins, setCoins] = useState(0);
@@ -104,16 +165,30 @@ export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const fetchQuests = async () => {
-    const { data, error } = await supabase.from("quests").select("*");
-    if (error) { console.error("Quest fetch error:", error); return; }
-    setQuests(data ?? []);
-  };
+  if (!user) return;
+  const { data, error } = await supabase.from("quests").select("*").eq("user_id", user.id);
+  if (error) { console.error("Quest fetch error:", error); return; }
+  setQuests(data ?? []);
+};
 
-  const fetchTasks = async () => {
-    const { data, error } = await supabase.from("tasks").select("*");
-    if (error) { console.error("Task fetch error:", error); return; }
-    setTasks(data ?? []);
-  };
+const fetchTasks = async () => {
+  if (!user) return;
+  const { data: questIds } = await supabase
+    .from("quests")
+    .select("id")
+    .eq("user_id", user.id);
+  
+  if (!questIds || questIds.length === 0) { setTasks([]); return; }
+  
+  const ids = questIds.map(q => q.id);
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("*")
+    .in("quest_id", ids);
+  
+  if (error) { console.error("Task fetch error:", error); return; }
+  setTasks(data ?? []);
+};
 
 
   //Handle delete and edit
@@ -143,15 +218,19 @@ const handleAddCoins = () => {
 
 //RESET  
   const handleReset = async () => {
-  // Delete all tasks and quests
-  await supabase.from("tasks").delete().neq("id", 0);
-  await supabase.from("quests").delete().neq("id", 0);
+  
+  await supabase.from("tasks").delete().eq("user_id", user?.id);
+  await supabase.from("quests").delete().eq("user_id", user?.id);
+
+  // Run to Delete all tasks and quests
+  //await supabase.from("tasks").delete().neq("id", 0);
+  //await supabase.from("quests").delete().neq("id", 0);
 
   // Insert 3 dummy quests
   const { data: questData } = await supabase.from("quests").insert([
-    { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200 },
-    { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200 },
-    { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100 },
+  { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200, user_id: user?.id },
+  { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200, user_id: user?.id },
+  { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100, user_id: user?.id },
   ]).select();
 
   // Insert dummy tasks linked to those quests
@@ -169,8 +248,10 @@ const handleAddCoins = () => {
   localStorage.removeItem("quest_user_id");
   setUser(null);
 
-  await fetchQuests();
-  await fetchTasks();
+  //await fetchQuests();
+  //await fetchTasks();
+  //setQuests([]);
+  //setTasks([]);
 };
 
 
@@ -198,29 +279,49 @@ const handleToggleQuest = async (quest: Quest) => {
   if (!loginName.trim()) return;
   const { data, error } = await supabase.from("users").insert([{ username: loginName }]).select().single();
   if (error) { console.error(error); return; }
+  
   localStorage.setItem("quest_user_id", data.id);
   setUser(data);
   setShowLogin(false);
   setLoginName("");
+
+  // Create dummy quests for new user
+  const { data: questData } = await supabase.from("quests").insert([
+    { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200, user_id: data.id },
+    { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200, user_id: data.id },
+    { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100, user_id: data.id },
+  ]).select();
+
+  if (questData) {
+    await supabase.from("tasks").insert([
+      { quest_id: questData[0].id, title: "Research requirements", xp: 50, is_done: false },
+      { quest_id: questData[0].id, title: "Complete calculations", xp: 80, is_done: false },
+      { quest_id: questData[1].id, title: "Check vehicle oil and tires", xp: 50, is_done: false },
+      { quest_id: questData[1].id, title: "Pack hiking gear", xp: 90, is_done: false },
+      { quest_id: questData[2].id, title: "Watch RC vehicle videos", xp: 60, is_done: false },
+    ]);
+  }
 };
 
 
 
   console.log(quests)
 
-  useEffect(() => {
-    fetchQuests();
-    fetchTasks();
-  }, []);
+    useEffect(() => {
+      const savedId = localStorage.getItem("quest_user_id");
+      if (savedId) {
+        supabase.from("users").select("*").eq("id", savedId).single().then(({ data }) => {
+          if (data) setUser(data);
+        });
+      }
+    }, []);
 
-  useEffect(() => {
-  const savedId = localStorage.getItem("quest_user_id");
-  if (savedId) {
-    supabase.from("users").select("*").eq("id", savedId).single().then(({ data }) => {
-      if (data) setUser(data);
-    });
-  }
-}, []);
+    useEffect(() => {
+      if (user) {
+        fetchQuests();
+        fetchTasks();
+      }
+    }, [user]);
 
 
   const getTasksForQuest = (questId: number) =>
@@ -272,22 +373,24 @@ const handleToggleTask = async (task: Task) => {
   }
 };
 
-  const handleAddTask = async (questId: number) => {
-    await supabase.from("tasks").insert([
-      { quest_id: questId, title: "New Task", xp: 10 },
-    ]);
-    fetchTasks();
-  };
+const handleAddTask = async (questId: number) => {
+  await supabase.from("tasks").insert([
+    { quest_id: questId, title: "New Task", xp: 10 },
+  ]);
+  fetchTasks(); // make sure this is here
+};
 
   const handleAddQuest = async () => {
   if (!newQuestTitle.trim()) return;
   const { error } = await supabase.from("quests").insert([{
-    title: newQuestTitle,
-    priority_group: Number(newQuestType),
-    priority_rank: newQuestRank,
-    due_date: newQuestDate || null,
-    total_xp: newQuestType === "1" ? 200 : 100,
-  }]);
+  title: newQuestTitle,
+  priority_group: Number(newQuestType),
+  priority_rank: newQuestRank,
+  due_date: newQuestDate || null,
+  total_xp: newQuestType === "1" ? 200 : 100,
+  user_id: user?.id,  // ADD THIS
+}]);
+
   if (error) { console.log("SUPABASE ERROR:", JSON.stringify(error, null, 2)); return; }
   await fetchQuests();
   setNewQuestTitle("");
@@ -434,22 +537,27 @@ const handleToggleTask = async (task: Task) => {
           </div>
         </div>
 
-        {user && (
-        <div className="fixed top-[11.6vh] left-0 right-0 z-20 px-4 -py-2 bg-gradient-to-t from-black/60 to-transparent">
-          <div className="flex justify-end text-[10px] text-zinc-400 font-bold mb-1">
-            <span>{user.total_xp % 1000} / 1000 XP</span>
-          </div>
-          <div className="h-1 bg-zinc-800/60 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-rose-700 rounded-full transition-all duration-500"
-              style={{ width: `${(user.total_xp % 1000) / 10}%` }}
-            />
-          </div>
-        </div>
-      )}
+        
       </section>
 
-
+          {user && (
+            <div className="relative z-10 w-full px-4 py-2 -mt-7"
+              style={{
+                background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.7))"
+              }}
+            >
+              <div className="flex justify-end text-[10px] text-zinc-400 font-bold mb-1">
+                <span>{user.total_xp % 1000} / 1000 XP</span>
+              </div>
+              <div className="h-1 bg-zinc-800/60 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-rose-700 rounded-full transition-all duration-500"
+                  style={{ width: `${(user.total_xp % 1000) / 10}%` }}
+                />
+              </div>
+            </div>
+          )}
+      
 
 
       
@@ -459,7 +567,7 @@ const handleToggleTask = async (task: Task) => {
 
 
 
-      <div className="p-2 py-3">
+      <div className="p-2 py-1">
 
         {/* TAB BUTTONS */}
         <div className="flex gap-2">
@@ -632,7 +740,7 @@ const handleToggleTask = async (task: Task) => {
       {(showMenu || menuClosing) && (
         <button
           onClick={() => { setShowAddQuest(true); setShowMenu(false); }}
-          className={`fixed bottom-6 right-23 px-6 h-14 rounded-full text-sm font-bold shadow-lg transition-colors bg-zinc-700 text-zinc-300 ${
+          className={`fixed bottom-6 right-23 px-6 h-14 z-50 rounded-full text-sm font-bold shadow-lg transition-colors bg-rose-800 text-zinc-300 ${
             menuClosing ? "menu-exit" : "menu-enter"
           }`}
         >
@@ -642,8 +750,8 @@ const handleToggleTask = async (task: Task) => {
 
         <button
           onClick={() => { setEditMode(!editMode); if (showMenu) closeMenu(); }}
-          className={`fixed bottom-6 left-6 px-6 h-14 pl-8 pr-8 rounded-full text-sm font-bold shadow-lg transition-colors duration-250 ${
-            editMode ? "bg-rose-900 text-white" : "bg-zinc-700 text-zinc-300"
+          className={`fixed bottom-6 left-6 px-6 h-14 z-50 pl-8 pr-8 rounded-full text-sm font-bold shadow-lg transition-colors duration-250 ${
+            editMode ? "bg-rose-900 text-white" : "bg-rose-800 text-zinc-300"
           }`}
         >
           {editMode ? "✓ DONE" : "✎ EDIT"}
@@ -653,8 +761,8 @@ const handleToggleTask = async (task: Task) => {
       {/* ADD QUEST BUTTON */}
       <button
         onClick={() => showMenu ? closeMenu() : setShowMenu(true)}
-        className={`fixed bottom-6 right-6 h-14 w-14 rounded-full text-white text-3xl font-bold shadow-lg flex items-center justify-center transition-colors duration-250 ${
-          showMenu ? "bg-rose-900" : "bg-zinc-700"
+        className={`fixed bottom-6 right-6 h-14 w-14 z-50 rounded-full text-white text-3xl font-bold shadow-lg flex items-center justify-center transition-colors duration-250 ${
+          showMenu ? "bg-rose-900" : "bg-rose-800"
         }`}
       >
         <Image
@@ -782,23 +890,26 @@ const handleToggleTask = async (task: Task) => {
 
 
       {(showMenu || menuClosing) && (
-        <div className={`fixed bottom-27 left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}>
+        <div className={`fixed top-47 left-6 right-6 bg-zinc-800 rounded-lg border border-white/10 p-3 flex flex-col gap-2 z-50 ${menuClosing ? "menu-exit" : "menu-enter"}`}>
 
             <div className="flex gap-2 p-1 pb-0 font-bold justify-center">AI ASSISTANT</div>
 
             {/* Text input */}
             <textarea
-              placeholder="Quick note..."
-              rows={6}
-              className="w-full p-3 bg-zinc-900 text-white text-sm border border-white/10 rounded placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
-            />
+            value={aiNote}
+            onChange={(e) => setAiNote(e.target.value)}
+            placeholder="Quick note..."
+            rows={6}
+            className="w-full p-3 bg-zinc-900 text-white text-sm border border-white/10 rounded placeholder-white/30 focus:outline-none focus:border-white/30 resize-none"
+          />
 
-            {/* AI Assistant button */}
-            <button className="w-full py-2 text-sm font-bold text-white bg-rose-900 hover:bg-rose-700 rounded transition-colors"
-            onClick={() => closeMenu()}
-            >
-              ✦ START
-            </button>
+          <button
+            className="w-full py-2 text-sm font-bold text-white bg-rose-900 hover:bg-rose-700 rounded transition-colors"
+            onClick={handleAiGenerate}
+            disabled={aiLoading}
+          >
+            {aiLoading ? "GENERATING..." : "✦ CREATE"}
+          </button>
 
             </div>
       )}
@@ -825,7 +936,11 @@ const handleToggleTask = async (task: Task) => {
         )}
 
 
-
+      <div className="fixed bottom-0 left-0 right-0 h-35 pointer-events-none z-10"
+        style={{
+          background: "linear-gradient(to bottom, transparent 40%, black 99%)"
+        }}
+      />
 
 
       {/* FOOTER */}
@@ -833,7 +948,7 @@ const handleToggleTask = async (task: Task) => {
         className="h-200 w-full fixed bottom-0 left-0 pointer-events-none z-[-1]"
         style={{
           backgroundImage:
-            "linear-gradient(to bottom, black, transparent 90%), linear-gradient(to top, black 0%, transparent 10%), url('/bottom.png')",
+            "linear-gradient(to bottom, black, transparent 90%), url('/bottom.png')",
           backgroundSize: "100% auto",
           backgroundPosition: "bottom center",
           backgroundRepeat: "no-repeat",
