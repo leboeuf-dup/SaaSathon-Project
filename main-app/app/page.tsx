@@ -12,9 +12,10 @@ const getOrdinal = (n: number) => {
 
 
 
-const userName: string = "ELVIS ZHANG";
-const level: number = 3;
-const coins: number = 50;
+//const userName: string = "ELVIS ZHANG";
+//const level: number = 3;
+//const coins: number = 50;
+
 
 const badges = [
   { src: "/badges/badge1.png", alt: "Warrior badge" },
@@ -49,10 +50,21 @@ type Task = {
 
 export default function Home() {
   //Menu
+  //Coins
+  const [coins, setCoins] = useState(0);
+
   const [newQuestType, setNewQuestType] = useState<"1" | "2">("1");
   const [newQuestRank, setNewQuestRank] = useState(1);
   const [newQuestDate, setNewQuestDate] = useState("");
   const [newQuestXp, setNewQuestXp] = useState(50);
+
+  //Log in system
+  const [user, setUser] = useState<{ id: string; username: string; level: number; total_xp: number } | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginName, setLoginName] = useState("");
+
+
+  const level = user ? Math.floor(user.total_xp / 1000) + 1 : null;
 
   //Edit mode
   const [editMode, setEditMode] = useState(false);
@@ -116,8 +128,81 @@ export default function Home() {
     fetchTasks();
   };
 
+//Add stuff
+const handleAddXp = async () => {
+  if (!user) return;
+  const newXp = user.total_xp + 100;
+  await supabase.from("users").update({ total_xp: newXp }).eq("id", user.id);
+  setUser({ ...user, total_xp: newXp });
+};
+
+const handleAddCoins = () => {
+  setCoins(coins + 5);
+};
 
 
+//RESET  
+  const handleReset = async () => {
+  // Delete all tasks and quests
+  await supabase.from("tasks").delete().neq("id", 0);
+  await supabase.from("quests").delete().neq("id", 0);
+
+  // Insert 3 dummy quests
+  const { data: questData } = await supabase.from("quests").insert([
+    { title: "Engineering Assignment", priority_group: 1, priority_rank: 1, due_date: null, total_xp: 200 },
+    { title: "Prepare for Road Trip", priority_group: 1, priority_rank: 2, due_date: null, total_xp: 200 },
+    { title: "RC Car Project", priority_group: 2, priority_rank: 1, due_date: null, total_xp: 100 },
+  ]).select();
+
+  // Insert dummy tasks linked to those quests
+  if (questData) {
+    await supabase.from("tasks").insert([
+      { quest_id: questData[0].id, title: "Research requirements", xp: 50, is_done: false },
+      { quest_id: questData[0].id, title: "Complete calculations", xp: 80, is_done: false },
+      { quest_id: questData[1].id, title: "Check vehicle oil and tires", xp: 50, is_done: false },
+      { quest_id: questData[1].id, title: "Pack hiking gear", xp: 90, is_done: false },
+      { quest_id: questData[2].id, title: "Watch RC vehicle videos", xp: 60, is_done: false },
+    ]);
+  }
+
+  // Log out
+  localStorage.removeItem("quest_user_id");
+  setUser(null);
+
+  await fetchQuests();
+  await fetchTasks();
+};
+
+
+
+const handleToggleQuest = async (quest: Quest) => {
+  const newDone = !quest.completed;
+  await supabase.from("quests").update({ completed: newDone }).eq("id", quest.id);
+  setQuests(quests.map(q => q.id === quest.id ? { ...q, completed: newDone } : q));
+
+  if (user) {
+    const newXp = newDone
+      ? user.total_xp + quest.total_xp
+      : Math.max(0, user.total_xp - quest.total_xp);
+    await supabase.from("users").update({ total_xp: newXp }).eq("id", user.id);
+    setUser({ ...user, total_xp: newXp });
+  }
+
+  setCoins(prev => newDone ? prev + 1 : Math.max(0, prev - 1));
+};
+
+
+
+  //Handles login
+  const handleStartDemo = async () => {
+  if (!loginName.trim()) return;
+  const { data, error } = await supabase.from("users").insert([{ username: loginName }]).select().single();
+  if (error) { console.error(error); return; }
+  localStorage.setItem("quest_user_id", data.id);
+  setUser(data);
+  setShowLogin(false);
+  setLoginName("");
+};
 
 
 
@@ -128,26 +213,64 @@ export default function Home() {
     fetchTasks();
   }, []);
 
+  useEffect(() => {
+  const savedId = localStorage.getItem("quest_user_id");
+  if (savedId) {
+    supabase.from("users").select("*").eq("id", savedId).single().then(({ data }) => {
+      if (data) setUser(data);
+    });
+  }
+}, []);
+
+
   const getTasksForQuest = (questId: number) =>
     tasks.filter((t) => t.quest_id === questId);
 
   const isQuestCompleted = (questId: number) => {
-    const questTasks = getTasksForQuest(questId);
-    return questTasks.length > 0 && questTasks.every((t) => t.is_done);
-  };
+  const quest = quests.find(q => q.id === questId);
+  if (quest?.completed) return true;
+  const questTasks = getTasksForQuest(questId);
+  return questTasks.length > 0 && questTasks.every((t) => t.is_done);
+};
 
   // Sort quests by priority_rank
   const sortedQuests = [...quests].sort((a, b) => a.priority_rank - b.priority_rank);
   const mainQuests = sortedQuests.filter((q) => q.priority_group === 1);
   const sideQuests = sortedQuests.filter((q) => q.priority_group === 2);
 
-  const handleToggleTask = async (task: Task) => {
-    await supabase
-      .from("tasks")
-      .update({ is_done: !task.is_done })
-      .eq("id", task.id);
-    fetchTasks();
-  };
+const handleToggleTask = async (task: Task) => {
+  const newDone = !task.is_done;
+  await supabase.from("tasks").update({ is_done: newDone }).eq("id", task.id);
+
+  const updatedTasks = tasks.map(t => t.id === task.id ? { ...t, is_done: newDone } : t);
+  setTasks(updatedTasks);
+
+  if (user) {
+    let newXp = newDone
+      ? user.total_xp + task.xp
+      : Math.max(0, user.total_xp - task.xp);
+
+    // Check if all tasks in the quest are now done
+    const questTasks = updatedTasks.filter(t => t.quest_id === task.quest_id);
+    const allDone = questTasks.length > 0 && questTasks.every(t => t.is_done);
+    const wasDone = tasks.filter(t => t.quest_id === task.quest_id).every(t => t.is_done);
+
+    if (allDone && !wasDone) {
+      // Just completed the quest
+      const quest = quests.find(q => q.id === task.quest_id);
+      newXp += quest?.total_xp ?? 0;
+      setCoins(prev => prev + 1);
+    } else if (!allDone && wasDone) {
+      // Just uncompleted the quest
+      const quest = quests.find(q => q.id === task.quest_id);
+      newXp = Math.max(0, newXp - (quest?.total_xp ?? 0));
+      setCoins(prev => Math.max(0, prev - 1));
+    }
+
+    await supabase.from("users").update({ total_xp: newXp }).eq("id", user.id);
+    setUser({ ...user, total_xp: newXp });
+  }
+};
 
   const handleAddTask = async (questId: number) => {
     await supabase.from("tasks").insert([
@@ -265,10 +388,17 @@ export default function Home() {
             QUEST IT
           </p>
 
-          <h1
-            className={`${getUserNameSize(userName)} col-start-1 row-start-2 min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}
-          >
-            {userName}
+          <h1 className={`${getUserNameSize(user?.username ?? "GUEST")} col-start-1 row-start-2  min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}>
+            {user ? (
+              user.username.toUpperCase()
+            ) : (
+              <button
+                onClick={() => setShowLogin(true)}
+                className="text-white text-sm  p-1 border rounded-full"
+              >
+                LOG IN
+              </button>
+            )}
           </h1>
 
           <div className="col-start-1 row-start-3 flex items-end gap-3">
@@ -288,20 +418,48 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="col-start-2 row-span-3 row-start-1 grid content-center gap-3 text-right">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">Level</p>
-              <p className="text-2xl font-black leading-none">{level}</p>
-            </div>
+          <div className="col-start-2 row-span-3 row-start-1 grid content-center gap-2 pb-5 text-right">
+            
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">Coins</p>
-              <p className="text-2xl font-black leading-none">{coins}</p>
+              <p className="text-2xl font-black leading-none">{user ? coins : "-"}</p>
             </div>
+            
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">Level</p>
+              <p className="text-2xl font-black leading-none">{level ?? "-"}</p>
+
+            </div>
+            
           </div>
         </div>
+
+        {user && (
+        <div className="fixed top-[11.6vh] left-0 right-0 z-20 px-4 -py-2 bg-gradient-to-t from-black/60 to-transparent">
+          <div className="flex justify-end text-[10px] text-zinc-400 font-bold mb-1">
+            <span>{user.total_xp % 1000} / 1000 XP</span>
+          </div>
+          <div className="h-1 bg-zinc-800/60 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-rose-700 rounded-full transition-all duration-500"
+              style={{ width: `${(user.total_xp % 1000) / 10}%` }}
+            />
+          </div>
+        </div>
+      )}
       </section>
 
-      <div className="p-2">
+
+
+
+      
+
+
+
+
+
+
+      <div className="p-2 py-3">
 
         {/* TAB BUTTONS */}
         <div className="flex gap-2">
@@ -397,13 +555,27 @@ export default function Home() {
                   </span>
                 )}
               </p>
-              <h2
-                className={`text-xl font-bold pt-1 ${
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-bold pt-1 ${
                   isQuestCompleted(quest.id) ? "line-through text-zinc-400" : ""
-                }`}
-              >
-                {quest.title}
-              </h2>
+                }`}>
+                  {quest.title}
+                </h2>
+                {getTasksForQuest(quest.id).length === 0 && (
+                  <div
+                    onClick={() => handleToggleQuest(quest)}
+                    className={`w-5 h-5 rounded border-2 mt-2 flex items-center justify-center cursor-pointer shrink-0 ${
+                      quest.completed ? "bg-rose-700 border-rose-900" : "bg-zinc-600 border-zinc-500"
+                    }`}
+                  >
+                    {quest.completed && (
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </div>
               {renderTasks(quest)}
             </section>
           ))}
@@ -428,13 +600,27 @@ export default function Home() {
                   <span>DUE {new Date(quest.due_date).toLocaleDateString()}</span>
                 )}
               </p>
-              <h2
-                className={`text-xl font-bold pt-1 ${
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xl font-bold pt-1 ${
                   isQuestCompleted(quest.id) ? "line-through text-zinc-400" : ""
-                }`}
-              >
-                {quest.title}
-              </h2>
+                }`}>
+                  {quest.title}
+                </h2>
+                {getTasksForQuest(quest.id).length === 0 && (
+                  <div
+                    onClick={() => handleToggleQuest(quest)}
+                    className={`w-5 h-5 rounded border-2 flex mt-2 items-center justify-center cursor-pointer shrink-0 ${
+                      quest.completed ? "bg-rose-700 border-rose-900" : "bg-zinc-600 border-zinc-500"
+                    }`}
+                  >
+                    {quest.completed && (
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </div>
               {renderTasks(quest)}
             </section>
           ))}
@@ -482,7 +668,7 @@ export default function Home() {
 
       {/* ADD QUEST MODAL */}
     {(showAddQuest || questClosing) && (
-      <div className={`fixed inset-0 bg-black/60 flex flex-col p-6 z-50 py-20 ${
+      <div className={`fixed inset-0 bg-black/50 flex flex-col p-6 z-50 py-43 ${
         questClosing ? "menu-exit" : "menu-enter"
       }`}>
 
@@ -563,6 +749,32 @@ export default function Home() {
       >
         CANCEL
       </button>
+
+      
+      <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 flex gap-2 ${
+          menuClosing ? "menu-exit" : "menu-enter"
+        }`}>
+          <button
+            onClick={handleReset}
+            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-rose-400 transition-colors whitespace-nowrap"
+          >
+            RESET DEMO
+          </button>
+          <button
+            onClick={handleAddXp}
+            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
+          >
+            + XP
+          </button>
+          <button
+            onClick={handleAddCoins}
+            className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-yellow-400 transition-colors whitespace-nowrap"
+          >
+            + COINS
+          </button>
+        </div>
+
+
     </div>
   </div>
 )}
@@ -590,6 +802,31 @@ export default function Home() {
 
             </div>
       )}
+
+
+      {showLogin && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-50">
+            <div className="bg-zinc-800 p-6 rounded-lg border border-white/10 flex flex-col gap-3 w-full">
+              <h2 className="text-xl font-bold">Enter your name</h2>
+              <input
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                placeholder="Your name..."
+                className="w-full p-3 bg-zinc-900 text-white border border-white/20 placeholder-white/40 focus:outline-none focus:border-white rounded"
+              />
+              <button
+                onClick={handleStartDemo}
+                className="w-full bg-rose-900 text-white px-4 py-3 font-bold rounded hover:bg-rose-700 transition-colors"
+              >
+                START DEMO
+              </button>
+            </div>
+          </div>
+        )}
+
+
+
+
 
       {/* FOOTER */}
       <footer
