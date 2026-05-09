@@ -1,5 +1,29 @@
 import Image from "next/image";
 
+const userName = "ELVIS ZHANG";
+
+const badges = [
+  { src: "/badges/badge1.png", alt: "Warrior badge" },
+  { src: "/badges/badge1.png", alt: "Streak badge" },
+  { src: "/badges/badge1.png", alt: "Focus badge" },
+];
+
+function getUserNameSize(name: string) {
+  if (name.length > 20) {
+    return "text-lg";
+  }
+
+  if (name.length > 14) {
+    return "text-xl";
+  }
+
+  if (name.length > 10) {
+    return "text-2xl";
+  }
+
+  return "text-3xl";
+}
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-neutral-800 text-white">
@@ -13,53 +37,49 @@ export default function Home() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div className="relative z-10 flex h-full items-center justify-between gap-4">
-          <div className="relative flex h-full flex-1 items-center">
-            <h3 className="absolute left-0 top-1 text-[10px] font-bold uppercase tracking-[0.3em] text-white/70">
-              QUEST IT
-            </h3>
+        <div className="relative z-10 grid h-full grid-cols-[minmax(0,1fr)_72px] grid-rows-[1px_1fr_34px] gap-x-4">
+          <p className="col-start-1 row-start-1 self-start text-[8px] font-bold uppercase tracking-[0.28em] text-white/70">
+            QUEST IT
+          </p>
 
-            <div className="translate-y-3">
-              <h1 className="text-3xl font-black leading-none tracking-wide">
-                ELVIS
-              </h1>
-              <div className="mt-2 flex translate-y-1 items-center gap-2">
-                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge1.png"
-                    alt="Warrior badge"
-                    fill
-                    sizes="32px"
-                  />
-                </div>
-                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge2.png"
-                    alt="Streak badge"
-                    fill
-                    sizes="32px"
-                  />
-                </div>
-                <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge3.png"
-                    alt="Focus badge"
-                    fill
-                    sizes="32px"
-                  />
-                </div>
+          <h1
+            className={`${getUserNameSize(
+              userName,
+            )} col-start-1 row-start-2 min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}
+          >
+            {userName}
+          </h1>
+
+          <div className="col-start-1 row-start-3 flex items-end gap-3">
+            {badges.map((badge) => (
+              <div
+                className="relative h-10 w-10 overflow-hidden rounded-full"
+                key={badge.alt}
+              >
+                <Image
+                  className="scale-175 object-cover"
+                  src={badge.src}
+                  alt={badge.alt}
+                  fill
+                  sizes="40px"
+                />
               </div>
-            </div>
+            ))}
           </div>
 
-          <div className="self-center border border-white/40 bg-black/40 px-3 py-2 text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
-              Level
-            </p>
-            <p className="text-2xl font-black leading-none">03</p>
+          <div className="col-start-2 row-span-3 row-start-1 grid content-center gap-3 text-right">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">
+                Level
+              </p>
+              <p className="text-2xl font-black leading-none">03</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">
+                Coins
+              </p>
+              <p className="text-2xl font-black leading-none">240</p>
+            </div>
           </div>
         </div>
       </section>
