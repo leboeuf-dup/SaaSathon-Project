@@ -532,7 +532,7 @@ const handleAddTask = async (questId: number) => {
       >
         <div className="relative z-10 grid h-full grid-cols-[minmax(0,1fr)_72px] grid-rows-[1px_1fr_34px] gap-x-4">
           <p className="col-start-1 row-start-1 self-start text-[8px] font-bold uppercase tracking-[0.28em] text-white/70">
-            QUEST IT
+            QUESTED
           </p>
 
           <h1 className={`${getUserNameSize(user?.username ?? "GUEST")} col-start-1 row-start-2  min-w-0 self-center overflow-hidden text-ellipsis whitespace-nowrap font-black leading-none tracking-wide`}>

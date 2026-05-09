@@ -5,11 +5,11 @@ Quested is a productivity-boosting webapp that helps users overcome tasks that o
 
 Quested gamifies the overall experience by transforming goals and smaller tasks into an RPG-like quest that the user partakes in. The app features an experience-based leveling system with regularly earnable rewards.
 ## Demo
-The demo can be accessed [here](https://yoururl.com).
+The demo can be accessed [here](https://quested-sage.vercel.app/).
 
 ## Screenshots
 
-![Demo Screenshot](./screenshots/demo.png))
+![Demo Screenshot](./screenshots/demo.png)
 
 
 ## Tech Stack
