@@ -30,7 +30,7 @@ function getUserNameSize(name: string) {
 
 export default function Home() {
 
-  const [activeQuest, setActiveQuest] = useState("MONDAY");
+  const [activeTab, setActiveTab] = useState("OVERVIEW");
   const [quests, setQuests] = useState<any[]>([]);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export default function Home() {
       console.log("DATA:", data);
       console.log("ERROR:", error);
 
-      setQuests(data || []);
+      setQuests(data ?? []);
     }
 
     testConnection();
@@ -110,105 +110,56 @@ export default function Home() {
 
       
       <div className="p-2">
-          
-      <div className="flex gap-2">
 
-        <button
-        onClick={() => setActiveQuest("MONDAY")}
-        className={`flex-1 px-4 py-2 font-bold ${
-          activeQuest === "MONDAY"
-            ? "bg-neutral-100"
-            : "bg-white-700"
-        }`}
-          >
-          QUEST 1
-        </button>
+        {/* TAB BUTTONS */}
+        <div className="flex gap-2">
 
-        <button
-        onClick={() => setActiveQuest("TUESDAY")}
-        className={`flex-1 px-4 py-2 font-bold ${
-          activeQuest === "TUESDAY"
-            ? "bg-neutral-100"
-            : "bg-white-700"
-        }`}
+          <button
+            onClick={() => setActiveTab("OVERVIEW")}
+            className={`flex-1 px-4 py-2 font-bold ${
+              activeTab === "OVERVIEW"
+                ? "bg-neutral-100 text-black"
+                : "bg-neutral-700 text-white"
+            }`}
           >
-          QUEST 1
-        </button>
+            OVERVIEW
+          </button>
 
-        <button
-        onClick={() => setActiveQuest("MONDAY")}
-        className={`flex-1 px-4 py-2 font-bold ${
-          activeQuest === "MONDAY"
-            ? "bg-neutral-100"
-            : "bg-white-700"
-        }`}
+          <button
+            onClick={() => setActiveTab("MAIN")}
+            className={`flex-1 px-4 py-2 font-bold ${
+              activeTab === "MAIN"
+                ? "bg-neutral-100 text-black"
+                : "bg-neutral-700 text-white"
+            }`}
           >
-          QUEST 1
-        </button>
+            MAIN
+          </button>
+
+          <button
+            onClick={() => setActiveTab("SIDE")}
+            className={`flex-1 px-4 py-2 font-bold ${
+              activeTab === "SIDE"
+                ? "bg-neutral-100 text-black"
+                : "bg-neutral-700 text-white"
+            }`}
+          >
+            SIDE
+          </button>
+
+        </div>
+
+        {/* TAB CONTENT */}
+        <div className="mt-4 border border-white/30 bg-neutral-900 p-6 text-center text-3xl font-bold">
+
+          {activeTab === "OVERVIEW" && <p>1</p>}
+          {activeTab === "MAIN" && <p>2</p>}
+          {activeTab === "SIDE" && <p>3</p>}
+
+        </div>
 
       </div>
 
-
-      {activeQuest === "MONDAY" && (
-      <section className="border border-white/30 bg-neutral-900 p-6">
-        <h2 className="text-2xl font-semibold">MONDAY</h2>
-
-        <p className="mt-2 text-neutral-400">
-          Monday tasks here
-        </p>
-      </section>
-      )}
-
-
-      {activeQuest === "TUESDAY" && (
-        <section className="border border-white/30 bg-neutral-900 p-6">
-          <h2 className="text-2xl font-semibold">TUESDAY</h2>
-
-          <p className="mt-2 text-neutral-400">
-            Tuesday tasks here
-          </p>
-        </section>
-        )}
-      </div>
-
-      <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">
-          Quests
-        </h2>
-
-        {quests.map((quest) => (
-          <div
-            key={quest.id}
-            className="mb-3 border border-white/20 bg-neutral-900 p-4"
-          >
-            <p className="font-bold">{quest.title}</p>
-            <p>{quest.xp} XP</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="p-4">
-        <p className="max-w-md text-neutral-300">
-          This is a basic paragraph. Change this text to edit what appears on the page.
-        </p>
-
-        <section className="mt-8 border border-white/30 bg-neutral-900 p-6">
-          <h2 className="text-2xl font-semibold">Example Box</h2>
-          <p className="mt-2 text-neutral-400">
-            This box is a section element. The border, background, and spacing come from className.
-          </p>
-        </section>
-
-        <button className="mt-6 bg-white px-4 py-2 font-bold text-neutral-900">
-          Example Button
-        </button>
-
-        <ul className="mt-8 list-disc space-y-2 pl-6 text-neutral-200">
-          <li>First list item</li>
-          <li>Second list item</li>
-          <li>Third list item</li>
-        </ul>
-      </div>
     </main>
   );
 }
