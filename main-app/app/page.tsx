@@ -30,23 +30,53 @@ function getUserNameSize(name: string) {
 
 export default function Home() {
 
+  const [showAddQuest, setShowAddQuest] = useState(false);
+  const [newQuestTitle, setNewQuestTitle] = useState("");
   const [activeTab, setActiveTab] = useState("OVERVIEW");
-  const [quests, setQuests] = useState<any[]>([]);
+  
+  type Quest = {
+    id: number;
+    title: string;
+    priority_group: number;
+    total_xp: number;
+  };
 
-  useEffect(() => {
-    async function testConnection() {
-      const { data, error } = await supabase
-        .from("quests")
-        .select("*");
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
 
-      console.log("DATA:", data);
-      console.log("ERROR:", error);
+  const fetchQuests = async () => {
+    const { data } = await supabase.from("quests").select("*");
 
-      setQuests(data ?? []);
+      if (error) {
+    console.error("Quest fetch error:", error);
+    return;
+  }
+
+    setQuests(data ?? []);
+  };
+
+  const fetchTasks = async () => {
+    const { data } = await supabase.from("tasks").select("*");
+
+    if (error) {
+      console.error("Quest fetch error:", error);
+      return;
     }
 
-    testConnection();
+    setTasks(data ?? []);
+  };
+
+  useEffect(() => {
+    fetchQuests();
+    fetchTasks();
   }, []);
+
+  const getTasksForQuest = (questId: number) => {
+    return tasks.filter(t => t.quest_id === questId);
+  };
+
+  const mainQuests = quests.filter(q => q.priority_group === 1);
+  const sideQuests = quests.filter(q => q.priority_group === 2);
 
   return (
 
@@ -150,15 +180,262 @@ export default function Home() {
         </div>
 
         {/* TAB CONTENT */}
-        <div className="mt-4 border border-white/30 bg-neutral-900 p-6 text-center text-3xl font-bold">
+        <div className="mt-4 border border-white/30 bg-neutral-900 p-4">
 
-          {activeTab === "OVERVIEW" && <p>1</p>}
-          {activeTab === "MAIN" && <p>2</p>}
-          {activeTab === "SIDE" && <p>3</p>}
+          {/* OVERVIEW */}
+          {activeTab === "OVERVIEW" && (
+            <div>
+              <p className="text-3xl font-bold mb-4">1</p>
+
+              {quests.map((q) => (
+                <div key={q.id} className="border border-white/20 p-3 mb-2">
+
+                  <p className="font-bold">{q.title}</p>
+                  <p className="text-sm opacity-70">{q.total_xp} XP</p>
+
+                  {/* TASKS */}
+                  <div className="mt-2 space-y-2">
+
+                    {getTasksForQuest(q.id).map(task => (
+                      <div key={task.id} className="flex items-center gap-2">
+
+                        <input
+                          type="checkbox"
+                          checked={task.is_done}
+                          onChange={async () => {
+
+                            await supabase
+                              .from("tasks")
+                              .update({ is_done: !task.is_done })
+                              .eq("id", task.id);
+
+                            fetchTasks(); // refresh UI
+                          }}
+                        />
+
+                        <span className={task.is_done ? "line-through opacity-50" : ""}>
+                          {task.title} (+{task.xp} XP)
+                        </span>
+
+                      </div>
+                    ))}
+
+                    <button
+                      className="mt-2 text-sm underline text-white/70 hover:text-white"
+                      onClick={async () => {
+                        await supabase.from("tasks").insert([
+                          {
+                            quest_id: q.id,
+                            title: "New Task",
+                            xp: 10,
+                          },
+                        ]);
+
+                        fetchTasks();
+                      }}
+                    >
+                      + Add Task
+                    </button>
+
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* MAIN */}
+          {activeTab === "MAIN" && (
+            <div>
+              <p className="text-3xl font-bold mb-4">2</p>
+
+              {mainQuests.map((q) => (
+                <div key={q.id} className="border border-white/20 p-3 mb-2">
+
+                  <p className="font-bold">{q.title}</p>
+                  <p className="text-sm opacity-70">{q.total_xp} XP</p>
+
+                  {/* TASKS */}
+                  <div className="mt-2 space-y-2">
+
+                    {getTasksForQuest(q.id).map(task => (
+                      <div key={task.id} className="flex items-center gap-2">
+
+                        <input
+                          type="checkbox"
+                          checked={task.is_done}
+                          onChange={async () => {
+
+                            await supabase
+                              .from("tasks")
+                              .update({ is_done: !task.is_done })
+                              .eq("id", task.id);
+
+                            fetchTasks(); // refresh UI
+                          }}
+                        />
+
+                        <span className={task.is_done ? "line-through opacity-50" : ""}>
+                          {task.title} (+{task.xp} XP)
+                        </span>
+
+                      </div>
+                    ))}
+
+                  </div>
+
+                  <button
+                    className="mt-2 text-sm underline text-white/70 hover:text-white"
+                    onClick={async () => {
+                      await supabase.from("tasks").insert([
+                        {
+                          quest_id: q.id,
+                          title: "New Task",
+                          xp: 10,
+                        },
+                      ]);
+
+                      fetchTasks();
+                    }}
+                  >
+                    + Add Task
+                  </button>
+
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* SIDE */}
+          {activeTab === "SIDE" && (
+            <div>
+              <p className="text-3xl font-bold mb-4">3</p>
+
+              {sideQuests.map((q) => (
+                <div key={q.id} className="border border-white/20 p-3 mb-2">
+
+                  <p className="font-bold">{q.title}</p>
+                  <p className="text-sm opacity-70">{q.total_xp} XP</p>
+
+                  {/* TASKS */}
+                  <div className="mt-2 space-y-2">
+
+                    {getTasksForQuest(q.id).map(task => (
+                      <div key={task.id} className="flex items-center gap-2">
+
+                        <input
+                          type="checkbox"
+                          checked={task.is_done}
+                          onChange={async () => {
+
+                            await supabase
+                              .from("tasks")
+                              .update({ is_done: !task.is_done })
+                              .eq("id", task.id);
+
+                            fetchTasks(); // refresh UI
+                          }}
+                        />
+
+                        <span className={task.is_done ? "line-through opacity-50" : ""}>
+                          {task.title} (+{task.xp} XP)
+                        </span>
+
+                      </div>
+                    ))}
+
+                  </div>
+
+                  <button
+                    className="mt-2 text-sm underline text-white/70 hover:text-white"
+                    onClick={async () => {
+                      await supabase.from("tasks").insert([
+                        {
+                          quest_id: q.id,
+                          title: "New Task",
+                          xp: 10,
+                        },
+                      ]);
+
+                      fetchTasks();
+                    }}
+                  >
+                    + Add Task
+                  </button>
+
+                </div>
+              ))}
+            </div>
+          )}
 
         </div>
 
       </div>
+
+      <button
+        onClick={() => setShowAddQuest(true)}
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-white text-black text-3xl font-bold shadow-lg flex items-center justify-center"
+      >
+        +
+      </button>
+
+      {showAddQuest && (
+        <div className="fixed inset-0 bg-black/80 flex flex-col p-6">
+
+          {/* BACK BUTTON */}
+          <button
+            onClick={() => setShowAddQuest(false)}
+            className="text-white text-xl mb-4"
+          >
+            ← Back
+          </button>
+
+          {/* INPUT BOX */}
+          <div className="bg-neutral-900 p-6 border border-white/20">
+            
+            <h2 className="text-xl font-bold mb-4">
+              Create Quest
+            </h2>
+
+            <input
+              value={newQuestTitle}
+              onChange={(e) => setNewQuestTitle(e.target.value)}
+              placeholder="Enter quest title..."
+              className="w-full p-3 bg-neutral-800 text-white border border-white/20 placeholder-white/40 focus:outline-none focus:border-white"
+            />
+
+            <button
+              className="mt-4 w-full bg-white text-black px-4 py-3 font-bold rounded hover:bg-gray-200 transition"
+              onClick={async () => {
+                if (!newQuestTitle.trim()) return;
+
+                const { error } = await supabase.from("quests").insert([
+                  {
+                    title: newQuestTitle,
+                    priority_group: activeTab === "MAIN" ? 1 : 2,
+                    priority_rank: 1,
+                    total_xp: 50,
+                  },
+                ]);
+
+                if (error) {
+                  console.log("SUPABASE ERROR FULL:", JSON.stringify(error, null, 2));
+                  return;
+                }
+                
+                await fetchQuests();
+                
+                setNewQuestTitle("");
+                setShowAddQuest(false);
+              }}
+            >
+              Save
+            </button>
+
+          </div>
+
+        </div>
+      )}
 
     </main>
   );
