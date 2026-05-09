@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";8
 
 export async function POST(req: Request) {
   try {
@@ -53,6 +53,11 @@ Due date rules:
 - If the user says "due Friday", "by Sunday", "deadline 15 May", or similar, convert it to ISO format using currentDateTime.
 - If the user does not provide a due date, set dueDate to null.
 - Main quests and side quests must each have a dueDate field.
+Title rules:
+- Quest titles should be based on the user's wording and intent.
+- Do not use generic titles like "Main quest title" or "Side quest title".
+- If the user explicitly names a quest, preserve that name as closely as possible.
+- If the user does not provide an exact title, generate a concise descriptive title from the user's goal.
 
 
 Return ONLY valid JSON.
@@ -113,7 +118,7 @@ JSON format:
     }
   ],
   "levelRules": {
-    "xpPerLevel": 30,
+    "xpPerLevel": 3000,
     "badgeEveryLevels": 10
   }
 }
