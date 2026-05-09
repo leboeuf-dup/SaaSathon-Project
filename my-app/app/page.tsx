@@ -1,6 +1,84 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+  }
+}
 
 export default function Home() {
+  const [listening, setListening] = useState(false);
+  const [goal, setGoal] = useState("");
+  const [quests, setQuests] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  function startVoiceInput() {
+  if (!("webkitSpeechRecognition" in window)) {
+    alert("Voice input is not supported in this browser. Use Chrome or Edge.");
+    return;
+  }
+
+  const recognition = new window.webkitSpeechRecognition();
+
+  recognition.lang = "en-NZ";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    setListening(true);
+  };
+
+  recognition.onresult = (event: any) => {
+    const transcript = event.results[0][0].transcript;
+    setGoal(transcript);
+  };
+
+  recognition.onerror = () => {
+    alert("Voice input failed. Try again.");
+    setListening(false);
+  };
+
+  recognition.onend = () => {
+    setListening(false);
+  };
+
+  recognition.start();
+}
+
+  async function generateQuests() {
+    if (!goal.trim()) {
+      alert("Type a goal first.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/generate-quests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ goal }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "AI failed.");
+        return;
+      }
+
+      setQuests(data.quests);
+    } catch {
+      alert("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-neutral-800 text-white">
       <section
@@ -23,33 +101,16 @@ export default function Home() {
               <h1 className="text-3xl font-black leading-none tracking-wide">
                 ELVIS
               </h1>
+
               <div className="mt-2 flex translate-y-1 items-center gap-2">
                 <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge1.png"
-                    alt="Warrior badge"
-                    fill
-                    sizes="32px"
-                  />
+                  <Image src="/badges/badge1.png" alt="Warrior badge" fill sizes="32px" className="object-cover" />
                 </div>
                 <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge2.png"
-                    alt="Streak badge"
-                    fill
-                    sizes="32px"
-                  />
+                  <Image src="/badges/badge2.png" alt="Streak badge" fill sizes="32px" className="object-cover" />
                 </div>
                 <div className="relative h-8 w-8 overflow-hidden rounded-full bg-black/40">
-                  <Image
-                    className="object-cover"
-                    src="/badges/badge3.png"
-                    alt="Focus badge"
-                    fill
-                    sizes="32px"
-                  />
+                  <Image src="/badges/badge3.png" alt="Focus badge" fill sizes="32px" className="object-cover" />
                 </div>
               </div>
             </div>
@@ -65,26 +126,59 @@ export default function Home() {
       </section>
 
       <div className="p-4">
-        <p className="max-w-md text-neutral-300">
-          This is a basic paragraph. Change this text to edit what appears on the page.
-        </p>
+        <section className="border border-white/30 bg-neutral-900 p-6">
+          <h2 className="text-2xl font-semibold">AI Quest Generator</h2>
 
-        <section className="mt-8 border border-white/30 bg-neutral-900 p-6">
-          <h2 className="text-2xl font-semibold">Example Box</h2>
           <p className="mt-2 text-neutral-400">
-            This box is a section element. The border, background, and spacing come from className.
+            Type a goal. AI will turn it into simple quests.
           </p>
+
+          <textarea
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            placeholder="Example: I need to finish my SaaS hackathon project by Sunday"
+            className="mt-4 h-28 w-full bg-neutral-800 p-3 text-white outline-none ring-1 ring-white/20 focus:ring-white/50"
+          />
+
+          <button
+          onClick={startVoiceInput}
+          className="mt-3 mr-3 bg-yellow-300 px-4 py-2 font-bold text-neutral-900"
+                    >
+          {listening ? "Listening..." : "🎙️ Speak Goal"}
+          </button>
+
+          <button
+            onClick={generateQuests}
+            disabled={loading}
+            className="mt-4 bg-white px-4 py-2 font-bold text-neutral-900 disabled:bg-neutral-500"
+          >
+            {loading ? "Generating..." : "Generate Quests"}
+          </button>
         </section>
 
-        <button className="mt-6 bg-white px-4 py-2 font-bold text-neutral-900">
-          Example Button
-        </button>
+        <section className="mt-8 border border-white/30 bg-neutral-900 p-6">
+          <h2 className="text-2xl font-semibold">Your Quests</h2>
 
-        <ul className="mt-8 list-disc space-y-2 pl-6 text-neutral-200">
-          <li>First list item</li>
-          <li>Second list item</li>
-          <li>Third list item</li>
-        </ul>
+          {quests.length === 0 ? (
+            <p className="mt-2 text-neutral-400">
+              No quests yet. Generate some using AI.
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {quests.map((quest, index) => (
+                <li
+                  key={index}
+                  className="border border-white/20 bg-neutral-800 p-3 text-neutral-100"
+                >
+                  <span className="font-bold text-yellow-300">
+                    Quest {index + 1}:
+                  </span>{" "}
+                  {quest}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </main>
   );
