@@ -277,7 +277,25 @@ const handleToggleQuest = async (quest: Quest) => {
   //Handles login
   const handleStartDemo = async () => {
       if (!loginName.trim()) return;
-      const { data, error } = await supabase.from("users").insert([{ username: loginName }]).select().single();
+
+      // Check if username already exists
+      const { data: existing } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", loginName.trim())
+        .single();
+
+      if (existing) {
+        // User found — just log them in
+        localStorage.setItem("quest_user_id", existing.id);
+        setShowLogin(false);
+        setLoginName("");
+        setUser(existing); // triggers useEffect → fetchQuests + fetchTasks
+        return;
+      }
+
+      // New user — create them with dummy data
+      const { data, error } = await supabase.from("users").insert([{ username: loginName.trim() }]).select().single();
       if (error) { console.error(error); return; }
 
       const { data: questData } = await supabase.from("quests").insert([
@@ -299,7 +317,7 @@ const handleToggleQuest = async (quest: Quest) => {
       localStorage.setItem("quest_user_id", data.id);
       setShowLogin(false);
       setLoginName("");
-      setUser(data); // ← triggers useEffect → fetchQuests + fetchTasks
+      setUser(data);
     };
 
 
@@ -868,7 +886,7 @@ const handleAddTask = async (questId: number) => {
             onClick={handleReset}
             className="border px-4 h-8 rounded-full text-xs font-bold text-zinc-300 hover:text-rose-400 transition-colors whitespace-nowrap"
           >
-            RESET DEMO
+            RESET ACCOUNT
           </button>
           <button
             onClick={handleAddXp}
